@@ -2,15 +2,20 @@
 #include <QFile>
 #include <QDebug>
 #include <QVector>
+#include <QWidget>
 
-class SignalWidget{
+class SignalWidget : public QWidget{        // custom widget, inherits from QWidget for GUI rendering
 
     QVector<int> signalData;         // waveform data 
     int timestep;
     QString units;
 
 public:
-    SignalWidget(){};
+    SignalWidget() : QWidget(nullptr)           // constructor with no parameter, widget is always a top-level window (no parent)
+    {
+        parseData("../data.txt");
+        setMinimumSize(800, 100);               // minimum size of window
+    };
 
     void parseData(const QString &filename)         
     {
@@ -54,10 +59,10 @@ public:
         }
     }
 
-    void printData()
-    {
-        qDebug() << signalData;         
-    }
+    // void printData()
+    // {
+    //     qDebug() << signalData;         
+    // }
 
 };
 
@@ -66,8 +71,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     SignalWidget widget;
-    widget.parseData("../data.txt");
-    widget.printData();
+    widget.show();                      // show widget on screen
 
     return app.exec();
 }
