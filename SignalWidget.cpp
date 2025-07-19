@@ -113,6 +113,12 @@ void SignalWidget::drawSignal(QPainter &painter)
     // calculation of space between points so data fit evenly across X scale
     double scaleX = static_cast<double>(drawableWidth) / (points - 1);       // points - 1 = lines to be drawn between points
 
+    // store values to SignalDrawingInfo struct for reuse
+    signalElements.leftX = leftX;
+    signalElements.bottomY = bottomY;
+    signalElements.scaleX = scaleX;
+
+    /* small dataset handling 
     for (int i = 1; i < points; i++) 
     {
         int x1 = leftX + (i - 1) * scaleX;
@@ -125,11 +131,35 @@ void SignalWidget::drawSignal(QPainter &painter)
 
         painter.drawLine(x1, y1, x2, y2);
     }
+    */
+    
+    /* optimization for large datasets */
+    // calculate the downsampling step size:
+    // - if there are more data points than horizontal pixels available (drawableWidth), skip some points to avoid drawing too many and overlapping pixels
+    // - if we have fewer points than pixels, step will be 1, meaning no skipping
+    // - using qMax ensures step is at least 1, to avoid zero or negative steps
+    int step = qMax(points / drawableWidth, 1);        // downsampling step size
 
-    // store values to SignalDrawingInfo struct for reuse
-    signalElements.leftX = leftX;
-    signalElements.bottomY = bottomY;
-    signalElements.scaleX = scaleX;
+    QPainterPath path;          // batch lines instead of calling painter.drawLine() repeatedly
+    bool started = false;       // indicate if first point is set
+
+    for (int i = 0; i < points; i += step) 
+    {
+        int x = leftX + i * signalElements.scaleX;
+        // in Qt, (0,0) is top-left, Y increases downwards
+        // to draw the signal with Y = 0 at bottom and increase it upwards,
+        // Y is inverted by subtracting from bottomY
+        int y = bottomY - (signalData[i] * drawableHeight);
+
+        if(!started)
+        {
+            path.moveTo(x,y);   // move path's starting position to first point
+            started = true;     // starting point added
+        }
+        else
+            path.lineTo(x,y);   // connect next point to the path with a line
+    }
+    painter.drawPath(path);    // draw entire path in a single operation — more efficient than drawing each line separately
 }
 
 void SignalWidget::drawTimeLabels(QPainter &painter)
@@ -140,14 +170,24 @@ void SignalWidget::drawTimeLabels(QPainter &painter)
     // retrieve info from SignalDrawingInfo struct
     QRect signalRect = signalElements.signalRect;
 
-    for (int i = 0; i < signalData.size(); i++) {
-        int x = signalElements.leftX + i * signalElements.scaleX;
+    // convert time units used in signal waveforms to milliseconds
+    int conversion = 1;                          // default unit ms
+    if(units == "ns") 
+        conversion = 1000000;                    // 1 ms = 1000000 ns
+    else if(units == "μs" || units == "us")      // us = μs, keyboard friendly substitute 
+        conversion = 1000;                       // 1 ms = 1000 μs
 
-        QString label = QString::number(i * timestep) + units;        // form label text: time (i * timestep) in units
+    for (int ms = 1; ; ms++) {                 // loop for every 1 ms, 2 ms, ..., until data ends             
+        int index = (ms * conversion) / timestep;      // calculate the index in signalData that corresponds to this millisecond
+        if (index >= signalData.size()) break;         // stop if index is beyond the signal data
+
+        int x = signalElements.leftX + index * signalElements.scaleX;
+
+        QString label = QString::number(ms) + "ms";        // form label text: time in milliseconds
 
         QRect textRect = painter.fontMetrics().boundingRect(label);   // pixel size (width and height) of the label text using the default font
         int textX = x - textRect.width() / 2;                         // centered alignment horizontally 
-        int textY = signalElements.bottomY + textRect.height();                      // vertical position just below the signal line, inside the signal rectangle
+        int textY = signalElements.bottomY + textRect.height();       // vertical position just below the signal line, inside the signal rectangle
 
         // adjust label inside signalRect bounds if needed
         if (textX < signalRect.left()) textX = signalRect.left();
