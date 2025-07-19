@@ -26,6 +26,7 @@ class SignalWidget : public QWidget                      // custom widget, inher
     void drawTimeLabels(QPainter &painter);
 
     SignalDrawingInfo signalElements;
+    QPixmap drawingCache;            // off-screen (not directly visible) buffer
 
 public:
     SignalWidget();

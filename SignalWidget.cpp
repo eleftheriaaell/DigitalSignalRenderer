@@ -60,12 +60,20 @@ void SignalWidget::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
 
-    painter.fillRect(rect(), Qt::white);        // fill the whole widget with white
+    if(drawingCache.size() != size())         // if widget was resized, regenerate the cached content
+    {
+        drawingCache = QPixmap(size());      // create a new pixmap matching the current widget
+        drawingCache.fill(Qt::white);        // clear the pixmap with a white background
 
-    drawTitle(painter);
-    drawSignalRect(painter); 
-    drawSignal(painter);  
-    drawTimeLabels(painter);
+        // use cachePainter to draw all elements onto the off-screen cache
+        QPainter cachePainter(&drawingCache);
+        drawTitle(cachePainter);
+        drawSignalRect(cachePainter); 
+        drawSignal(cachePainter);  
+        drawTimeLabels(cachePainter);
+    }
+
+    painter.drawPixmap(0, 0, drawingCache);      // draw cached content onto the widget
 }
 
 void SignalWidget::drawTitle(QPainter &painter)
