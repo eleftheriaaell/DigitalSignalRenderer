@@ -4,12 +4,15 @@
 #include <QVector>
 #include <QWidget>
 #include <QPainter>
+#include <QFileInfo>
+#include <QFont>
 
 class SignalWidget : public QWidget{        // custom widget, inherits from QWidget for GUI rendering
 
     QVector<int> signalData;         // waveform data 
     int timestep;
     QString units;
+    QString filename;
 
 public:
     SignalWidget() : QWidget(nullptr)           // constructor with no parameter, widget is always a top-level window (no parent)
@@ -18,9 +21,11 @@ public:
         setMinimumSize(800, 100);               // minimum size of window
     };
 
-    void parseData(const QString &filename)         
+    void parseData(const QString &filepath)         
     {
-        QFile file(filename);
+        filename = QFileInfo(filepath).fileName();    // save just the file name, not full path
+        
+        QFile file(filepath);
         if(!file.open(QIODevice::ReadOnly | QIODevice::Text))       // open file only for reading and in text mode (otherwise raw bytes)
         {
             qDebug() << "Cannot open file!";            
@@ -64,16 +69,30 @@ protected:                                  // protected in QWidget class so it 
     void paintEvent(QPaintEvent*) override
     {
         QPainter painter(this);
+
+        /* Widget */
         painter.fillRect(rect(), Qt::white);        // fill the whole widget with white
 
+        /* Title */
+        int titleHeight = 30;                               
+        QRect titleRect(0, 0, width(), titleHeight);        // draw full-width title background
+        painter.fillRect(titleRect, Qt::lightGray);         // light gray background
+        painter.setFont(QFont("", 12, QFont::Bold));        // default font
+        
+        // draw title text left-aligned, vertically centered and add 10px padding from the left
+        painter.drawText(titleRect.adjusted(10, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter, filename);      
+
+        /* Signal Rectangle */
+        int signalMargin = 20;                      // margin between main window and signal rectangle, applied on both left and right
+        int signalTop = titleHeight + 10;           // signal rectangle below the title
         int signalHeight = height() / 3;            // take 1/3 of the widget to display the signal
-        int margin = 20;                            // margin between main window and signal rectangle 
-        QRect signalRect(margin, margin, width() - 2 * margin, signalHeight);       // create a new rectangle for the signal 
+
+        QRect signalRect(signalMargin, signalTop, width() - 2 * signalMargin, signalHeight);       // create a new rectangle for the signal 
         painter.fillRect(signalRect, Qt::black);    // fill the signal rectangle with black
         painter.setPen(Qt::green);
 
-        // adjust borders with padding so the signal is not drawn onto them
-        int padding = 20;  
+        /* Signal */
+        int padding = 20;   // adjust borders with padding so the signal is not drawn onto them
 
         int leftX = signalRect.left() + padding;
         int rightX = signalRect.right() - padding;
