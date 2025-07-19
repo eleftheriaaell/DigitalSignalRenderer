@@ -121,6 +121,26 @@ protected:                                  // protected in QWidget class so it 
 
             painter.drawLine(x1, y1, x2, y2);
         }
+
+        /* Time Label */
+        painter.setPen(Qt::white);
+        painter.setFont(QFont("", 8));           
+
+        for (int i = 0; i < points; i++) {
+            int x = leftX + i * scaleX;
+
+            QString label = QString::number(i * timestep) + units;        // form label text: time (i * timestep) in units
+
+            QRect textRect = painter.fontMetrics().boundingRect(label);   // pixel size (width and height) of the label text using the default font
+            int textX = x - textRect.width() / 2;                         // centered alignment horizontally 
+            int textY = bottomY + textRect.height();                      // vertical position just below the signal line, inside the signal rectangle
+
+            // adjust label inside signalRect bounds if needed
+            if (textX < signalRect.left()) textX = signalRect.left();
+            if ((textX + textRect.width()) > signalRect.right()) textX = signalRect.right() - textRect.width();
+
+            painter.drawText(textX, textY, label);
+        }
     }
 
 };
