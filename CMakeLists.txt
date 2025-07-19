@@ -7,6 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)         # version required, error if unsuppo
 
 find_package(Qt5 REQUIRED COMPONENTS Widgets)        # Qt5 widgets module
 
-add_executable(SignalRenderer signalRenderer.cpp)    # executable, source file(s)
+add_executable(SignalRenderer signalRenderer.cpp SignalWidget.cpp)    # executable, source file(s)
 
 target_link_libraries(SignalRenderer Qt5::Widgets)   # link Qt5 widget library to target
