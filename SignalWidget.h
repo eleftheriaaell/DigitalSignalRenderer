@@ -27,6 +27,7 @@ class SignalWidget : public QWidget                      // custom widget, inher
     void drawSignalRect(QPainter &painter);
     void drawSignal(QPainter &painter);
     void drawTimeLabels(QPainter &painter);
+    void resetView();
 
     SignalDrawingInfo signalElements;
     QPixmap drawingCache;            // off-screen (not directly visible) buffer
@@ -44,4 +45,5 @@ protected:                                           // protected in QWidget cla
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
 };

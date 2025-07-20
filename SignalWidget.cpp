@@ -272,3 +272,18 @@ void SignalWidget::mouseReleaseEvent(QMouseEvent* event)
         unsetCursor();      // restore default cursor
     }
 }
+
+void SignalWidget::resetView()
+{
+    signalElements.zoom = 1.0;        // default zoom
+    signalElements.offsetX = 0.0;     // default pan (no offset)
+
+    drawingCache = QPixmap();         // clear cached content
+    update();                         // trigger repaint
+}
+
+void SignalWidget::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    Q_UNUSED(event);
+    resetView();
+}
