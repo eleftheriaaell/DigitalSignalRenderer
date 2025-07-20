@@ -29,6 +29,38 @@ Ensure the input file data.txt is located in the directory from which you run th
 
 ---
 
+Running Unit Tests
+
+Google Test is integrated for unit testing.
+
+From the build directory, run:
+
+./SignalRendererTests
+
+This will execute all available tests and print the results.
+
+Tests cover:
+
+- Widget construction and destruction
+- File parsing (valid and invalid files)
+- Repainting stability
+- Zoom event handling using Ctrl + scroll
+
+Tests are executed manually by running the test binary directly.
+
+(Optional) To integrate tests with CTest, uncomment the following lines in CMakeLists.txt:
+
+include(GoogleTest)
+gtest_discover_tests(SignalRendererTests)
+
+Then, from the build directory, run:
+
+ctest
+
+This will execute the tests automatically through CTest.
+
+---
+
 Input File Format
 
 The input file should follow this format:
