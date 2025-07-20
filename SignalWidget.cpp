@@ -151,9 +151,12 @@ void SignalWidget::drawSignal(QPainter &painter)
     QPainterPath path;          // batch lines instead of calling painter.drawLine() repeatedly
     bool started = false;       // indicate if first point is set
 
+    painter.save();             // save painter state before applying clipping
+    painter.setClipRect(signalElements.signalRect);  // restrict drawing to signal area, signal line inside signal rectangle
+
     for (int i = 0; i < points; i += step) 
     {
-        int x = leftX + i * signalElements.scaleX;
+        int x = leftX + (i * signalElements.scaleX * signalElements.zoom) + signalElements.offsetX;   // apply zoom scaling and horizontal panning to compute X position
         // in Qt, (0,0) is top-left, Y increases downwards
         // to draw the signal with Y = 0 at bottom and increase it upwards,
         // Y is inverted by subtracting from bottomY
@@ -168,6 +171,8 @@ void SignalWidget::drawSignal(QPainter &painter)
             path.lineTo(x,y);   // connect next point to the path with a line
     }
     painter.drawPath(path);    // draw entire path in a single operation — more efficient than drawing each line separately
+
+    painter.restore();  // remove clipping
 }
 
 void SignalWidget::drawTimeLabels(QPainter &painter)
@@ -189,7 +194,11 @@ void SignalWidget::drawTimeLabels(QPainter &painter)
         int index = (ms * conversion) / timestep;      // calculate the index in signalData that corresponds to this millisecond
         if (index >= signalData.size()) break;         // stop if index is beyond the signal data
 
-        int x = signalElements.leftX + index * signalElements.scaleX;
+        int x = signalElements.leftX + (index * signalElements.scaleX * signalElements.zoom) + signalElements.offsetX;
+        if (x < signalRect.left())
+            continue;                   // skip labels that are offscreen to the left
+        if (x > signalRect.right())
+            break;                      // stop drawing labels beyond right edge
 
         QString label = QString::number(ms) + "ms";        // form label text: time in milliseconds
 
@@ -202,5 +211,64 @@ void SignalWidget::drawTimeLabels(QPainter &painter)
         if ((textX + textRect.width()) > signalRect.right()) textX = signalRect.right() - textRect.width();
 
         painter.drawText(textX, textY, label);
+    }
+}
+
+void SignalWidget::wheelEvent(QWheelEvent* event)
+{
+    /* ctrl + scroll to zoom */
+    if(event->modifiers() & Qt::ControlModifier)   // check for pressed modifier keys and if ctrl is one of them
+    {
+        double oldZoom = signalElements.zoom;      // zoom factor before scrolling
+
+        if (event->angleDelta().y() > 0)        // vertical scroll direction
+            signalElements.zoom *= 1.1;         // scroll up, zoom in
+        else
+            signalElements.zoom /= 1.1;         // scroll down, zoom out
+
+        signalElements.zoom = qBound(0.1, signalElements.zoom, 40.0);        // restrict zoom value between limits, prevent signal to vanish or zoom in excessively
+
+        /* zoom centering around mouse pointer */
+        double zoomChange = signalElements.zoom / oldZoom;          // zoom level change as ratio, i.e. zoom from 1.0x to 1.1x makes zoomChange = 1.1 (zoomed in by 10%)
+        double mouseToSignal = event->x() - signalElements.leftX;   // mouse position on X scale, relative to the start of the signal 
+        signalElements.offsetX = (signalElements.offsetX - mouseToSignal) * zoomChange + mouseToSignal;  // scale offset relative to the mouse position, zoom centered around cursor
+
+        drawingCache = QPixmap();          // clear cached content
+        update();                          // trigger repaint
+    }
+    else
+        QWidget::wheelEvent(event);       // default behavior
+}
+
+void SignalWidget::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        dragging = true;
+        lastDragPos = event->pos();         // track mouse position
+        setCursor(Qt::ClosedHandCursor);    // change cursor icon while dragging
+    }
+}
+
+void SignalWidget::mouseMoveEvent(QMouseEvent* event)
+{
+    if (dragging)
+    {
+        int distanceX = event->x() - lastDragPos.x();       // horizontal distance moved by the mouse after dragging
+        signalElements.offsetX += distanceX;                // shift signal horizontaly based on drag
+
+        lastDragPos = event->pos();         // update last position for next drag
+
+        drawingCache = QPixmap();           // clear cached content
+        update();                           // trigger repaint
+    }
+}
+
+void SignalWidget::mouseReleaseEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        dragging = false;
+        unsetCursor();      // restore default cursor
     }
 }
